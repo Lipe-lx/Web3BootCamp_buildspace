@@ -5,9 +5,11 @@ import abi from "./utils/WavePortal.json";
 
 const App = () => {
   const [currentAccount, setCurrentAccount] = useState("");
-  const contractAddress = "0xcb3d9E2a5db86C10E496020a8D84A78251174365";
+  const [allWaves, setAllWaves] = useState([]);
+  const contractAddress = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
   const contractABI = abi.abi;
-
+  
+  //verificação da carteira
   const checkIfWalletIsConnected = async () => {
     try {
       const { ethereum } = window;
@@ -24,7 +26,10 @@ const App = () => {
       if (accounts.length !== 0) {
         const account = accounts[0];
         console.log("Found an authorized account:", account);
-        setCurrentAccount(account);
+        setCurrentAccount(account); 
+        
+        //getAllWaves(account);
+        
       } else {
         console.log("No authorized account found")
       }
@@ -54,6 +59,7 @@ const App = () => {
     }
   }
 
+//utilizando funcoes do contrato na blockchain
 const wave = async () => {
     try {
       const { ethereum } = window;
@@ -63,9 +69,7 @@ const wave = async () => {
         const signer = provider.getSigner();
         const wavePortalContract = new ethers.Contract(contractAddress, contractABI, signer);
 
-        let count = await wavePortalContract.getTotalWaves();
-        console.log("Retrieved total wave count...", count.toNumber());
-
+        
         /*
         * Execute the actual wave from your smart contract
         */
@@ -85,6 +89,46 @@ const wave = async () => {
     }
   }
 
+  /*
+   * Create a method that gets all waves from your contract
+   */
+  const getAllWaves = async () => {
+    try {
+      const { ethereum } = window;
+      if (ethereum) {
+        const provider = new ethers.providers.Web3Provider(ethereum);
+        const signer = provider.getSigner();
+        const wavePortalContract = new ethers.Contract(contractAddress, contractABI, signer);
+
+        /*
+         * Call the getAllWaves method from your Smart Contract
+         */
+        const waves = await wavePortalContract.getAllWaves();
+        /*
+         * We only need address, timestamp, and message in our UI so let's
+         * pick those out
+         */
+        let wavesCleaned = [];
+        waves.forEach(wave => {
+          wavesCleaned.push({
+            address: wave.waver,
+            timestamp: new Date(wave.timestamp * 1000),
+            message: wave.message
+          });
+        });
+
+        /*
+         * Store our data in React State
+         */
+        setAllWaves(wavesCleaned);
+      } else {
+        console.log("Ethereum object doesn't exist!")
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
   useEffect(() => {
     checkIfWalletIsConnected();
   }, [])
@@ -93,7 +137,7 @@ const wave = async () => {
     <div className="mainContainer">
       <div className="dataContainer">
         <div className="header">
-        👋 Hey there!
+          👋 Hey there!
         </div>
 
         <div className="bio">
@@ -104,14 +148,32 @@ const wave = async () => {
           Wave at Me
         </button>
 
-        {/*
-        * If there is no currentAccount render this button
-        */}
         {!currentAccount && (
           <button className="waveButton" onClick={connectWallet}>
             Connect Wallet
           </button>
         )}
+        
+        <fieldset>
+            <legend>Comments</legend>
+            <p>
+              <label for="text">Message: <em class="required">(Required)</em>{wave.message}</label>
+              <textarea name="text" id="text" cols="20" rows="10"></textarea>
+            </p>
+            <p>
+              <input type="button" value="Submit!" id="btnSubmit"/>
+            </p>
+        </fieldset>
+                
+
+        {allWaves.map((wave, index) => {
+          return (
+            <div key={index} style={{ backgroundColor: "OldLace", marginTop: "16px", padding: "8px" }}>
+              <div>Address: {wave.address}</div>
+              <div>Time: {wave.timestamp.toString()}</div>
+              <div>Message: {wave.message}</div>
+            </div>)
+        })}
       </div>
     </div>
   );
